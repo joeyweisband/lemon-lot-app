@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, ChangeEvent, FormEvent, JSX } from 'react';
@@ -45,9 +46,9 @@ export default function ReserveTime(): JSX.Element {
   });
   
   const [vehicleData, setVehicleData] = useState<VehicleData | null>(null);
-
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   
   useEffect(() => {
     // Get vehicle data from localStorage or context/state management
@@ -149,6 +150,15 @@ export default function ReserveTime(): JSX.Element {
         throw new Error(errorData.error || 'Failed to create calendar event');
       }
       
+      // Fetch all calendar events after successful creation
+      const eventsResponse = await fetch('/api/calendar/get-events');
+      if (!eventsResponse.ok) {
+        throw new Error('Failed to fetch calendar events');
+      }
+      
+      const eventsData = await eventsResponse.json();
+      setCalendarEvents(eventsData.events || []);
+      
       // Here you would typically send the reservation data to your database as well
       console.log('Reservation Data:', reservationData);
       console.log('Vehicle Data:', vehicleData);
@@ -184,7 +194,37 @@ export default function ReserveTime(): JSX.Element {
             </svg>
             <h2 className="text-2xl font-bold text-green-600 mb-2">Reservation Successful!</h2>
             <p className="mb-4">Your spot has been reserved and added to the calendar.</p>
-            <p className="text-sm text-gray-600">A confirmation email will be sent to {reservationData.email}</p>
+            <p className="text-sm text-gray-600 mb-6">A confirmation email will be sent to {reservationData.email}</p>
+            
+            <div className="mt-8 border-t pt-6">
+              <h3 className="text-xl font-bold mb-4 text-blue-600">All Calendar Events</h3>
+              {calendarEvents.length > 0 ? (
+                <div className="max-h-96 overflow-y-auto shadow-inner bg-gray-50 rounded-lg p-4">
+                  <ul className="divide-y divide-gray-200">
+                    {calendarEvents.map((event, index) => (
+                      <li key={index} className="py-4">
+                        <div className="text-left">
+                          <p className="font-semibold text-blue-700">{event.summary}</p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Start:</span> {new Date(event.start?.dateTime || event.start?.date).toLocaleString()}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">End:</span> {new Date(event.end?.dateTime || event.end?.date).toLocaleString()}
+                          </p>
+                          {event.description && (
+                            <p className="text-xs mt-2 text-gray-500 whitespace-pre-line bg-white p-2 rounded border">
+                              {event.description}
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-gray-500 p-4 bg-gray-50 rounded-lg">No events found in calendar</p>
+              )}
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
